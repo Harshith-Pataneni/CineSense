@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Movie or Series Decider</title>
+    <link rel="stylesheet" href="login.css">
+</head>
+<body>
+    <div class="login-container">
+
+        <!-- LOGIN PANEL -->
+        <div id="loginPanel">
+            <h2>Login</h2>
+            <form id="loginForm">
+                <input type="email" id="loginEmail" placeholder="Email" required>
+                <input type="password" id="loginPassword" placeholder="Password" required>
+                <div id="loginError" class="error"></div>
+                <button type="submit">Login</button>
+            </form>
+            <button id="googleBtn" class="google-btn">Continue with Google</button>
+            <p class="switch-link">Don't have an account? <a href="#" id="showSignup">Create one</a></p>
+        </div>
+
+        <!-- SIGNUP PANEL -->
+        <div id="signupPanel" style="display:none;">
+            <h2>Create Account</h2>
+            <form id="signupForm">
+                <input type="text" id="signupName" placeholder="Your name" required>
+                <input type="email" id="signupEmail" placeholder="Email" required>
+                <input type="password" id="signupPassword" placeholder="Password" required>
+                <input type="password" id="signupConfirm" placeholder="Confirm password" required>
+                <div id="signupError" class="error"></div>
+                <div id="signupSuccess" class="success"></div>
+                <button type="submit">Create Account</button>
+            </form>
+            <button id="googleBtnSignup" class="google-btn">Sign up with Google</button>
+            <p class="switch-link">Already have an account? <a href="#" id="showLogin">Log in</a></p>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Toggle panels ---
+        document.getElementById('showSignup').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('loginPanel').style.display = 'none';
+            document.getElementById('signupPanel').style.display = 'block';
+        });
+        document.getElementById('showLogin').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('signupPanel').style.display = 'none';
+            document.getElementById('loginPanel').style.display = 'block';
+        });
+
+        // --- Login ---
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const errorDiv = document.getElementById('loginError');
+            errorDiv.textContent = '';
+            try {
+                const response = await fetch('http://localhost:5000/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password }),
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('userEmail', data.email);
+                    localStorage.setItem('userName', data.name || data.email.split('@')[0]);
+                    window.location.href = '../Main/index.html';
+                } else {
+                    errorDiv.textContent = data.message;
+                }
+            } catch (err) {
+                errorDiv.textContent = 'Server error. Make sure the backend is running.';
+            }
+        });
+
+        // --- Signup ---
+        document.getElementById('signupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('signupName').value.trim();
+            const email = document.getElementById('signupEmail').value.trim();
+            const password = document.getElementById('signupPassword').value;
+            const confirm = document.getElementById('signupConfirm').value;
+            const errorDiv = document.getElementById('signupError');
+            const successDiv = document.getElementById('signupSuccess');
+            errorDiv.textContent = '';
+            successDiv.textContent = '';
+
+            if (password !== confirm) {
+                errorDiv.textContent = 'Passwords do not match.';
+                return;
+            }
+            if (password.length < 6) {
+                errorDiv.textContent = 'Password must be at least 6 characters.';
+                return;
+            }
+            try {
+                const response = await fetch('http://localhost:5000/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, password }),
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    successDiv.textContent = 'Account created! Redirecting to login...';
+                    setTimeout(() => {
+                        document.getElementById('signupPanel').style.display = 'none';
+                        document.getElementById('loginPanel').style.display = 'block';
+                        document.getElementById('loginEmail').value = email;
+                    }, 1500);
+                } else {
+                    errorDiv.textContent = data.message;
+                }
+            } catch (err) {
+                errorDiv.textContent = 'Server error. Make sure the backend is running.';
+            }
+        });
+
+        // --- Google OAuth ---
+        document.getElementById('googleBtn').addEventListener('click', () => {
+            window.location.href = 'http://localhost:5000/auth/google';
+        });
+        document.getElementById('googleBtnSignup').addEventListener('click', () => {
+            window.location.href = 'http://localhost:5000/auth/google';
+        });
+    </script>
+</body>
+</html>

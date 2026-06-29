@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Movie or Series Decider</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="sidebar-container">
+        <input id="sidebar-toggle" type="checkbox" />
+        <label for="sidebar-toggle" class="sidebar-toggle-btn">☰</label>
+        <aside class="sidebar">
+            <h2>Menu</h2>
+            <ul>
+                <li><a href="#">Recently Watched</a></li>
+                <li><a href="#">Trending</a></li>
+                <li><a href="#">Recommended For You</a></li>
+            </ul>
+        </aside>
+        <div class="overlay"></div>
+    </div>
+
+    <div class="page">
+        <header class="hero">
+            <h1>Select Your Movie/Series!!!</h1>
+        </header>
+
+        <section class="content">
+            <div class="left-text">
+                <h2>Indecisive On What To Watch?</h2>
+                <p>Don't Worry, We Are Here To Help!</p>
+            </div>
+
+            <div class="right-box">
+                <p class="choose-text">Choose one :</p>
+                <div class="cards">
+                    <article class="card card-movies">
+                        <div class="card-label">Movies</div>
+                    </article>
+                    <article class="card card-series">
+                        <div class="card-label">Series</div>
+                    </article>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ── User Bar ── -->
+    <div class="user-bar" id="userBar">
+        <div class="user-menu" id="userMenu">
+            <div class="user-menu-header">
+                <div class="menu-name" id="menuName">User</div>
+                <div class="menu-email" id="menuEmail"></div>
+            </div>
+            <button class="user-menu-item" id="switchAccountBtn">
+                <span class="menu-icon">🔄</span> Switch Account
+            </button>
+            <button class="user-menu-item danger" id="logoutBtn">
+                <span class="menu-icon">↩</span> Log Out
+            </button>
+        </div>
+        <button class="user-bar-btn" id="userBarBtn" aria-haspopup="true" aria-expanded="false">
+            <div class="user-avatar" id="userAvatar">?</div>
+            <span class="user-name-text" id="userNameText">Loading...</span>
+            <span class="user-chevron">▲</span>
+        </button>
+    </div>
+
+    <script src="integ.js"></script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Movies - Movie or Series Decider</title>
+  <link rel="stylesheet" href="movies.css" />
+</head>
+<body>
+  <script>
+    if (!localStorage.getItem('token')) {
+      window.location.href = '../Login/login.html';
+    }
+  </script>
+
+  <main class="movies-main">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <a href="../Main/index.html" style="color: #007bff; text-decoration: none; font-weight: bold; font-size: 16px;">🏠 Home</a>
+      <h1 style="margin: 0; flex: 1; text-align: center;">MOVIES</h1>
+      <div style="width: 80px;"></div>
+    </div>
+
+    <div id="filterMenu" class="filter-menu">
+      <h3>Select Genres</h3>
+      <div class="genre-grid" id="genreGrid"></div>
+
+      <h3>Select Platforms</h3>
+      <div class="platform-grid" id="platformGrid"></div>
+
+      <div class="filter-actions">
+        <button id="showResultsBtn" class="apply-btn">Show Results</button>
+      </div>
+    </div>
+
+    <section class="movie-list" id="movieList">
+      <p class="hint">Select genres and platforms, then click Show Results.</p>
+    </section>
+
+    <div class="random-movie-section" style="text-align: center; margin-top: 20px;">
+      <button id="pickRandomBtn" class="apply-btn">Pick a Random Movie</button>
+    </div>
+  </main>
+
+  <!-- Modal for random movie selection -->
+  <div id="randomMovieModal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn" id="closeModal">&times;</span>
+      <h2>Random Movie Recommendations</h2>
+      <div id="randomMoviesContainer" class="platform-recommendations"></div>
+      <div class="modal-actions">
+        <button id="reRandomizeBtn" class="apply-btn">Re-randomize</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
