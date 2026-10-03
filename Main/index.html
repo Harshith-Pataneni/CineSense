@@ -1,72 +1,214 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Movie or Series Decider</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Decider - What Are We Watching Tonight?</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-    <div class="sidebar-container">
-        <input id="sidebar-toggle" type="checkbox" />
-        <label for="sidebar-toggle" class="sidebar-toggle-btn">☰</label>
-        <aside class="sidebar">
-            <h2>Menu</h2>
-            <ul>
-                <li><a href="#">Recently Watched</a></li>
-                <li><a href="#">Trending</a></li>
-                <li><a href="#">Recommended For You</a></li>
-            </ul>
-        </aside>
-        <div class="overlay"></div>
-    </div>
-
-    <div class="page">
-        <header class="hero">
-            <h1>Select Your Movie/Series!!!</h1>
-        </header>
-
-        <section class="content">
-            <div class="left-text">
-                <h2>Indecisive On What To Watch?</h2>
-                <p>Don't Worry, We Are Here To Help!</p>
-            </div>
-
-            <div class="right-box">
-                <p class="choose-text">Choose one :</p>
-                <div class="cards">
-                    <article class="card card-movies">
-                        <div class="card-label">Movies</div>
-                    </article>
-                    <article class="card card-series">
-                        <div class="card-label">Series</div>
-                    </article>
-                </div>
-            </div>
-        </section>
-    </div>
-
-    <!-- ── User Bar ── -->
-    <div class="user-bar" id="userBar">
-        <div class="user-menu" id="userMenu">
-            <div class="user-menu-header">
-                <div class="menu-name" id="menuName">User</div>
-                <div class="menu-email" id="menuEmail"></div>
-            </div>
-            <button class="user-menu-item" id="switchAccountBtn">
-                <span class="menu-icon">🔄</span> Switch Account
-            </button>
-            <button class="user-menu-item danger" id="logoutBtn">
-                <span class="menu-icon">↩</span> Log Out
-            </button>
+  <!-- Sidebar Container -->
+  <div class="sidebar-container">
+    <aside class="sidebar" id="mainSidebar">
+      <div class="sidebar-header-bar">
+        <div class="sidebar-title-row">
+          <span style="font-size: 1.3rem;">📚</span>
+          <h2 style="margin: 0; font-size: 1.25rem;">My Hub</h2>
         </div>
-        <button class="user-bar-btn" id="userBarBtn" aria-haspopup="true" aria-expanded="false">
-            <div class="user-avatar" id="userAvatar">?</div>
-            <span class="user-name-text" id="userNameText">Loading...</span>
-            <span class="user-chevron">▲</span>
+        <button type="button" class="sidebar-close-x" id="closeSidebarXBtn" aria-label="Close sidebar">&times;</button>
+      </div>
+
+      <nav class="sidebar-nav-pills">
+        <a href="../Movies/index.html"><span>🎬</span> <span>Movies</span></a>
+        <a href="../Series/index.html"><span>📺</span> <span>TV Series</span></a>
+        <a href="javascript:void(0)" id="sidebarRandomPick"><span>🎲</span> <span>Surprise</span></a>
+      </nav>
+
+      <!-- Sidebar Tabs -->
+      <div class="hub-tabs">
+        <button type="button" class="hub-tab active" data-tab="watched">
+          <span>🕒 Watched</span>
+          <span class="tab-badge" id="watchedTabBadge">0</span>
         </button>
+        <button type="button" class="hub-tab" data-tab="recommended">
+          <span>✨ For You</span>
+        </button>
+        <button type="button" class="hub-tab" data-tab="popular">
+          <span>🔥 Popular</span>
+        </button>
+      </div>
+
+      <!-- Tab Content Panels -->
+      <div class="hub-tab-body">
+        <!-- Panel 1: Previously Watched -->
+        <div class="hub-panel active" id="watchedPanel">
+          <div class="panel-meta-bar">
+            <span>Watch History</span>
+            <button type="button" class="btn-clear-history" id="clearWatchedBtn">Clear All</button>
+          </div>
+          <div class="hub-media-list" id="watchedList"></div>
+        </div>
+
+        <!-- Panel 2: Recommended For You -->
+        <div class="hub-panel" id="recommendedPanel">
+          <div class="panel-meta-bar">
+            <span>Curated For You</span>
+          </div>
+          <div class="hub-media-list" id="recommendedList"></div>
+        </div>
+
+        <!-- Panel 3: Popular -->
+        <div class="hub-panel" id="popularPanel">
+          <div class="panel-meta-bar">
+            <span>Trending Titles</span>
+          </div>
+          <div class="hub-media-list" id="popularList"></div>
+        </div>
+      </div>
+    </aside>
+    <div class="overlay" id="sidebarOverlay"></div>
+  </div>
+
+  <!-- Top Sticky Navbar -->
+  <header class="top-nav">
+    <div class="nav-brand-group">
+      <button type="button" class="nav-sidebar-toggle" id="openSidebarNavBtn" aria-label="Open My Hub">☰</button>
+      <a href="index.html" class="brand-wrapper">
+        <div class="brand-logo-icon">🎬</div>
+        <h1 class="brand-name">Decider</h1>
+      </a>
     </div>
 
-    <script src="integ.js"></script>
+    <nav class="nav-links">
+      <button type="button" id="openSidebarBtn" class="nav-link-btn" style="border-color: rgba(99, 102, 241, 0.4); color: #c7d2fe; cursor: pointer; background: rgba(99, 102, 241, 0.1);">
+        <span>📚</span>
+        <span>My Hub</span>
+        <span class="hub-count-badge" id="watchedCountBadge">0</span>
+      </button>
+      <a href="../Movies/index.html" class="nav-link-btn">
+        <span>🎬</span>
+        <span>Movies</span>
+      </a>
+      <a href="../Series/index.html" class="nav-link-btn">
+        <span>📺</span>
+        <span>TV Series</span>
+      </a>
+      <a href="javascript:void(0)" id="surpriseMeBtn" class="nav-link-btn" style="border-color: rgba(245, 158, 11, 0.4); color: #fef3c7;">
+        <span>🎲</span>
+        <span>Surprise Me</span>
+      </a>
+    </nav>
+  </header>
+
+  <!-- Page Main Content -->
+  <div class="page">
+    <section class="hero">
+      <div class="hero-pill">✨ The Ultimate Streaming Decider</div>
+      <h1>What Are We Watching <span class="gradient-text">Tonight?</span></h1>
+      <p>Filter thousands of titles across your favorite streaming subscriptions — or let our intelligent randomized decider solve your choice paralysis in seconds.</p>
+
+      <div class="platform-ticker" id="platformTicker">
+        <div class="ticker-item ticker-netflix" data-platform="8">
+          <span class="ticker-dot"></span>
+          <span>Netflix</span>
+        </div>
+        <div class="ticker-item ticker-prime" data-platform="119">
+          <span class="ticker-dot"></span>
+          <span>Prime Video</span>
+        </div>
+        <div class="ticker-item ticker-hotstar" data-platform="122">
+          <span class="ticker-dot"></span>
+          <span>Disney+ Hotstar</span>
+        </div>
+        <div class="ticker-item ticker-sonyliv" data-platform="237">
+          <span class="ticker-dot"></span>
+          <span>SonyLIV</span>
+        </div>
+        <div class="ticker-item ticker-zee5" data-platform="232">
+          <span class="ticker-dot"></span>
+          <span>Zee5</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Cards Section -->
+    <section class="content">
+      <article class="card card-movies" role="button" tabindex="0">
+        <div class="card-content-wrap">
+          <span class="card-tag">Film Selection</span>
+          <h2 class="card-label">Movies</h2>
+          <p class="card-desc">Blockbusters, award-winning classics, indie gems, and trending cinematic releases tailored to your genres.</p>
+          <div class="card-action-btn">
+            <span>Explore Movies</span>
+            <span>→</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="card card-series" role="button" tabindex="0">
+        <div class="card-content-wrap">
+          <span class="card-tag">Binge Watch</span>
+          <h2 class="card-label">TV Series</h2>
+          <p class="card-desc">Captivating seasons, gripping miniseries, binge-worthy dramas, and sitcoms across top platforms.</p>
+          <div class="card-action-btn">
+            <span>Explore Series</span>
+            <span>→</span>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- Quick Decider Banner -->
+    <section class="quick-decider-banner">
+      <div class="decider-text">
+        <h3><span>🎲</span> Indecisive On What To Watch?</h3>
+        <p>Don't spend 40 minutes scrolling through menus. Jump straight to our weighted randomizer!</p>
+      </div>
+      <div class="decider-buttons">
+        <button type="button" id="pickRandomMovieBtn" class="btn-decider-action">
+          <span>🍿</span>
+          <span>Pick Random Movie</span>
+        </button>
+        <button type="button" id="pickRandomSeriesBtn" class="btn-decider-action">
+          <span>📺</span>
+          <span>Pick Random Series</span>
+        </button>
+      </div>
+    </section>
+  </div>
+
+  <!-- ── Floating User Bar ── -->
+  <div class="user-bar" id="userBar">
+    <div class="user-menu" id="userMenu">
+      <div class="user-menu-header">
+        <div class="menu-name" id="menuName">User</div>
+        <div class="menu-email" id="menuEmail"></div>
+      </div>
+      <button class="user-menu-item" id="switchAccountBtn">
+        <span class="menu-icon">🔄</span> Switch Account
+      </button>
+      <button class="user-menu-item danger" id="logoutBtn">
+        <span class="menu-icon">↩</span> Log Out
+      </button>
+    </div>
+    <button class="user-bar-btn" id="userBarBtn" aria-haspopup="true" aria-expanded="false">
+      <div class="user-avatar" id="userAvatar">?</div>
+      <span class="user-name-text" id="userNameText">Loading...</span>
+      <span class="user-chevron">▲</span>
+    </button>
+  </div>
+
+  <!-- ── Decider Modal ── -->
+  <div id="deciderModal" class="main-modal" role="dialog" aria-modal="true">
+    <div class="main-modal-content">
+      <div class="main-modal-header">
+        <h2 id="modalTitle">Decider Pick</h2>
+        <button class="modal-close-btn" id="closeModalBtn" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="main-modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <script src="integ.js"></script>
 </body>
 </html>

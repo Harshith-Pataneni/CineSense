@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Decider - Redirecting...</title>
+  <script>
+    if (localStorage.getItem('token')) {
+      window.location.replace('./Main/index.html');
+    } else {
+      window.location.replace('./Login/login.html');
+    }
+  </script>
+</head>
+<body style="background: #080c14; color: #fff; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0;">
+  <p>Loading Decider...</p>
+</body>
+</html>

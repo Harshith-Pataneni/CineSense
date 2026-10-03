@@ -3,55 +3,151 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Movies - Movie or Series Decider</title>
+  <title>Movies Decider - Find What To Watch</title>
   <link rel="stylesheet" href="movies.css" />
 </head>
 <body>
   <script>
     if (!localStorage.getItem('token')) {
+      // In case user hasn't logged in yet, redirect to login
       window.location.href = '../Login/login.html';
     }
   </script>
 
   <main class="movies-main">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-      <a href="../Main/index.html" style="color: #007bff; text-decoration: none; font-weight: bold; font-size: 16px;">🏠 Home</a>
-      <h1 style="margin: 0; flex: 1; text-align: center;">MOVIES</h1>
-      <div style="width: 80px;"></div>
-    </div>
+    <!-- Top Navigation Bar -->
+    <header class="top-nav">
+      <a href="../Main/index.html" class="nav-back-link">
+        <span>←</span>
+        <span>Back to Decider</span>
+      </a>
 
-    <div id="filterMenu" class="filter-menu">
-      <h3>Select Genres</h3>
+      <div class="brand-badge">
+        <span class="brand-icon">🎬</span>
+        <h1 class="brand-title">Movies</h1>
+      </div>
+
+      <div class="nav-actions">
+        <a href="../Series/index.html" class="nav-back-link">
+          <span>📺</span>
+          <span>Switch to Series</span>
+        </a>
+        <div class="quick-stats-pill" id="statsPill">
+          <span>Catalog:</span>
+          <span class="count" id="activeFilterSummary">Ready</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Filter Configuration Card -->
+    <section id="filterMenu" class="filter-menu">
+      <!-- Genres header & controls -->
+      <div class="filter-header-row">
+        <h3>
+          Select Genres
+          <span class="selection-badge" id="genreCountBadge">0 selected</span>
+        </h3>
+        <div class="filter-tools">
+          <button type="button" class="filter-tool-btn" id="clearGenresBtn">Clear</button>
+        </div>
+      </div>
       <div class="genre-grid" id="genreGrid"></div>
 
-      <h3>Select Platforms</h3>
+      <!-- Platforms header & controls -->
+      <div class="filter-header-row" style="margin-top: 20px;">
+        <h3>
+          Select Streaming Platforms
+          <span class="selection-badge" id="platformCountBadge">0 selected</span>
+        </h3>
+        <div class="filter-tools">
+          <button type="button" class="filter-tool-btn" id="selectAllPlatformsBtn">Select All</button>
+          <button type="button" class="filter-tool-btn" id="clearPlatformsBtn">Clear</button>
+        </div>
+      </div>
       <div class="platform-grid" id="platformGrid"></div>
 
+      <!-- Filter Action Buttons -->
       <div class="filter-actions">
-        <button id="showResultsBtn" class="apply-btn">Show Results</button>
+        <button id="showResultsBtn" class="btn-primary">
+          <span>🔍</span>
+          <span>Show Results</span>
+        </button>
+        <button id="pickRandomBtn" class="btn-random">
+          <span class="dice-icon">🎲</span>
+          <span>Pick a Random Movie</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Results Control Bar (Search in results, sort, and view toggle) -->
+    <div class="results-control-bar" id="resultsControlBar" style="display: none;">
+      <div class="search-input-wrapper">
+        <span class="search-icon">🔎</span>
+        <input type="text" id="movieSearchInput" placeholder="Filter current results by title..." />
+      </div>
+
+      <div class="sort-and-view">
+        <select id="sortSelect" class="sort-select">
+          <option value="popularity">Sort: Most Popular</option>
+          <option value="rating">Sort: Highest Rated</option>
+          <option value="newest">Sort: Newest First</option>
+          <option value="title">Sort: Alphabetical</option>
+        </select>
+
+        <div class="view-toggle-btns">
+          <button type="button" class="view-toggle-btn active" id="carouselViewBtn" title="Horizontal Scroll View">⊞ Carousel</button>
+          <button type="button" class="view-toggle-btn" id="gridViewBtn" title="Grid View">田 Grid</button>
+        </div>
       </div>
     </div>
 
+    <!-- Movie Results List -->
     <section class="movie-list" id="movieList">
-      <p class="hint">Select genres and platforms, then click Show Results.</p>
+      <div class="hint-box">
+        <div class="hint-icon">🍿</div>
+        <h4>Ready to discover movies?</h4>
+        <p>Choose your favorite genres and platforms above, then click <strong>Show Results</strong> or try <strong>Pick a Random Movie</strong> for instant inspiration!</p>
+      </div>
     </section>
-
-    <div class="random-movie-section" style="text-align: center; margin-top: 20px;">
-      <button id="pickRandomBtn" class="apply-btn">Pick a Random Movie</button>
-    </div>
   </main>
 
-  <!-- Modal for random movie selection -->
-  <div id="randomMovieModal" class="modal">
+  <!-- Modal for Random Movie Selection -->
+  <div id="randomMovieModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal-content">
-      <span class="close-btn" id="closeModal">&times;</span>
-      <h2>Random Movie Recommendations</h2>
-      <div id="randomMoviesContainer" class="platform-recommendations"></div>
+      <div class="modal-header">
+        <h2 id="modalTitle">
+          <span>🎲</span>
+          <span>Random Recommendation</span>
+        </h2>
+        <button class="close-btn" id="closeModal" aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="modal-body" id="randomModalBody">
+        <!-- Spotlight & platform picks will be dynamically injected here -->
+      </div>
+
       <div class="modal-actions">
-        <button id="reRandomizeBtn" class="apply-btn">Re-randomize</button>
+        <button id="reRandomizeBtn" class="btn-random">
+          <span class="dice-icon" id="reRandomizeIcon">🎲</span>
+          <span>Re-randomize / Spin Again</span>
+        </button>
       </div>
     </div>
   </div>
+
+  <!-- Modal for Movie Details -->
+  <div id="movieDetailsModal" class="modal" role="dialog" aria-modal="true">
+    <div class="modal-content" style="max-width: 800px;">
+      <div class="modal-header">
+        <h2 id="detailModalTitle">Movie Details</h2>
+        <button class="close-btn" id="closeDetailModal" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="modal-body" id="detailModalBody"></div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toastNotification" class="toast"></div>
 
   <script src="script.js"></script>
 </body>
