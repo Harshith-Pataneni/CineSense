@@ -80,6 +80,42 @@ function toggleWatched(movie) {
   return !exists;
 }
 
+// ─── INTERESTED STORAGE (SHARED ACROSS APP) ───
+const INTERESTED_STORAGE_KEY = 'decider_interested_titles';
+
+function getInterestedTitles() {
+  try { return JSON.parse(localStorage.getItem(INTERESTED_STORAGE_KEY) || '[]'); } catch (e) { return []; }
+}
+
+function isInterested(id) {
+  if (!id) return false;
+  return getInterestedTitles().some(item => String(item.id) === String(id));
+}
+
+function toggleInterested(movie) {
+  if (!movie || !movie.id) return false;
+  let list = getInterestedTitles();
+  const exists = list.some(w => String(w.id) === String(movie.id));
+
+  if (exists) {
+    list = list.filter(w => String(w.id) !== String(movie.id));
+  } else {
+    list.unshift({
+      id: movie.id,
+      title: movie.title || 'Untitled',
+      type: 'movie',
+      poster: movie.poster || (movie.poster_path ? `${IMAGE_BASE_URL}${movie.poster_path}` : FALLBACK_POSTER),
+      rating: movie.vote_average ? movie.vote_average.toFixed(1) : (movie.rating || 'NR'),
+      year: (movie.release_date || '').slice(0, 4) || (movie.year || 'N/A'),
+      overview: movie.overview || '',
+      interestedAt: new Date().toISOString()
+    });
+  }
+
+  localStorage.setItem(INTERESTED_STORAGE_KEY, JSON.stringify(list));
+  return !exists;
+}
+
 // ─── TOAST NOTIFICATION ───
 let toastTimer;
 function showToast(message) {
@@ -295,6 +331,7 @@ async function showResults() {
 function createMovieCardHTML(movie, platformName) {
   const m = formatMovie(movie);
   const watchedBadge = isWatched(m.id) ? '<div class="card-watched-badge" title="Marked as Watched">✓ Watched</div>' : '';
+  const interestedBadge = isInterested(m.id) ? '<div class="card-interested-badge" title="Interested">★ Interested</div>' : '';
 
   return `
     <article class="movie-card" data-id="${m.id}">
@@ -302,6 +339,7 @@ function createMovieCardHTML(movie, platformName) {
         <img class="movie-poster" src="${m.poster}" alt="${m.title}" loading="lazy" onerror="this.src='${FALLBACK_POSTER}'" />
         <div class="card-rating-badge">⭐ ${m.rating}</div>
         ${watchedBadge}
+        ${interestedBadge}
         <div class="card-overlay">
           <button class="quick-view-btn" type="button">Quick View</button>
         </div>
@@ -396,6 +434,9 @@ function createSpotlightCardHTML(movie, platform, trailerUrl) {
             <span>▶</span>
             <span>Watch Trailer on YouTube</span>
           </a>
+          <button type="button" class="btn-interested ${isInterested(m.id) ? 'active' : ''}" data-id="${m.id}" id="modalInterestedBtn">
+            <span>${isInterested(m.id) ? '★ Interested' : '+ Interested'}</span>
+          </button>
           <button type="button" class="btn-watched ${watched ? 'active' : ''}" data-id="${m.id}" id="modalWatchedBtn">
             <span>${watched ? '✓ Watched' : '+ Mark as Watched'}</span>
           </button>
@@ -415,6 +456,7 @@ function createDetailCardHTML(movie, platform, trailerUrl) {
     </div>
   ` : '';
   const watched = isWatched(m.id);
+  const interested = isInterested(m.id);
 
   return `
     <div class="spotlight-card" style="margin-bottom: 0;">
@@ -444,6 +486,9 @@ function createDetailCardHTML(movie, platform, trailerUrl) {
             <span>▶</span>
             <span>Watch Trailer on YouTube</span>
           </a>
+          <button type="button" class="btn-interested ${interested ? 'active' : ''}" data-id="${m.id}" id="modalInterestedBtn">
+            <span>${interested ? '★ Interested' : '+ Interested'}</span>
+          </button>
           <button type="button" class="btn-watched ${watched ? 'active' : ''}" data-id="${m.id}" id="modalWatchedBtn">
             <span>${watched ? '✓ Watched' : '+ Mark as Watched'}</span>
           </button>
@@ -737,6 +782,33 @@ document.addEventListener('click', (e) => {
       b.textContent = '✓ Watched';
       cardWrapper.appendChild(b);
     } else if (!isNowWatched && badge) {
+      badge.remove();
+    }
+  }
+});
+
+// Interested Toggle Delegation
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('#modalInterestedBtn');
+  if (!btn) return;
+  const id = Number(btn.dataset.id);
+  const movie = movieLookup.get(id) || { id };
+  const isNowInterested = toggleInterested(movie);
+
+  btn.classList.toggle('active', isNowInterested);
+  btn.innerHTML = `<span>${isNowInterested ? '★ Interested' : '+ Interested'}</span>`;
+  showToast(isNowInterested ? 'Added to Interested' : 'Removed from Interested');
+
+  const cardWrapper = document.querySelector(`.movie-card[data-id="${id}"] .poster-wrapper`);
+  if (cardWrapper) {
+    let badge = cardWrapper.querySelector('.card-interested-badge');
+    if (isNowInterested && !badge) {
+      const b = document.createElement('div');
+      b.className = 'card-interested-badge';
+      b.title = 'Interested';
+      b.textContent = '★ Interested';
+      cardWrapper.appendChild(b);
+    } else if (!isNowInterested && badge) {
       badge.remove();
     }
   }

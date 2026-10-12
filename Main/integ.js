@@ -58,6 +58,52 @@ function clearWatchedHistory() {
   updateWatchedUI();
 }
 
+// ─── INTERESTED TITLES STORAGE (SHARED ACROSS APP) ───
+const INTERESTED_STORAGE_KEY = 'decider_interested_titles';
+
+function getInterestedTitles() {
+  try {
+    return JSON.parse(localStorage.getItem(INTERESTED_STORAGE_KEY) || '[]');
+  } catch (e) {
+    return [];
+  }
+}
+
+function isInterested(id) {
+  if (!id) return false;
+  return getInterestedTitles().some(item => String(item.id) === String(id));
+}
+
+function toggleInterested(item) {
+  if (!item || !item.id) return false;
+  let list = getInterestedTitles();
+  const exists = list.some(w => String(w.id) === String(item.id));
+
+  if (exists) {
+    list = list.filter(w => String(w.id) !== String(item.id));
+  } else {
+    list.unshift({
+      id: item.id,
+      title: item.title || item.name || 'Untitled',
+      type: item.type || (item.title ? 'movie' : 'tv'),
+      poster: item.poster || (item.poster_path ? `${IMAGE_BASE_URL}${item.poster_path}` : FALLBACK_POSTER),
+      rating: item.rating || (item.vote_average ? item.vote_average.toFixed(1) : 'NR'),
+      year: item.year || (item.release_date || item.first_air_date || '').slice(0, 4) || 'N/A',
+      overview: item.overview || '',
+      interestedAt: new Date().toISOString()
+    });
+  }
+
+  localStorage.setItem(INTERESTED_STORAGE_KEY, JSON.stringify(list));
+  updateInterestedUI();
+  return !exists;
+}
+
+function clearInterestedHistory() {
+  localStorage.setItem(INTERESTED_STORAGE_KEY, JSON.stringify([]));
+  updateInterestedUI();
+}
+
 // ─── SIDEBAR & MY HUB MANAGEMENT ───
 const toggle = document.getElementById('sidebar-toggle');
 const overlay = document.getElementById('sidebarOverlay') || document.querySelector('.overlay');
@@ -167,6 +213,72 @@ function updateWatchedUI() {
 document.getElementById('clearWatchedBtn')?.addEventListener('click', () => {
   if (confirm('Clear all watched history?')) {
     clearWatchedHistory();
+  }
+});
+
+// Update Interested UI & Badges
+function updateInterestedUI() {
+  const list = getInterestedTitles();
+  const count = list.length;
+
+  const tabBadge = document.getElementById('interestedTabBadge');
+  if (tabBadge) tabBadge.textContent = count;
+
+  const interestedList = document.getElementById('interestedList');
+  if (!interestedList) return;
+
+  if (count === 0) {
+    interestedList.innerHTML = `
+      <div class="hub-empty-state">
+        <span style="font-size: 2.2rem;">🔖</span>
+        <h4>No interested titles yet</h4>
+        <p>Click "+ Interested" on any movie or series to save titles you want to watch!</p>
+      </div>
+    `;
+    return;
+  }
+
+  interestedList.innerHTML = list.map(item => `
+    <div class="sidebar-media-item" data-id="${item.id}" data-type="${item.type}">
+      <img src="${item.poster || FALLBACK_POSTER}" class="sidebar-media-thumb" alt="${item.title}" onerror="this.src='${FALLBACK_POSTER}'" />
+      <div class="sidebar-media-info">
+        <div class="sidebar-media-title" title="${item.title}">${item.title}</div>
+        <div class="sidebar-media-meta">
+          <span>⭐ ${item.rating}</span>
+          <span>📅 ${item.year}</span>
+          <span class="sidebar-media-type">${item.type === 'tv' ? 'Series' : 'Film'}</span>
+        </div>
+      </div>
+      <button type="button" class="btn-remove-interested" data-id="${item.id}" title="Remove from interested">&times;</button>
+    </div>
+  `).join('');
+
+  // Remove single interested item handler
+  interestedList.querySelectorAll('.btn-remove-interested').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const currentList = getInterestedTitles().filter(w => String(w.id) !== String(id));
+      localStorage.setItem(INTERESTED_STORAGE_KEY, JSON.stringify(currentList));
+      updateInterestedUI();
+    });
+  });
+
+  // Clicking an item in the interested list opens detail modal
+  interestedList.querySelectorAll('.sidebar-media-item').forEach(card => {
+    card.addEventListener('click', () => {
+      const id = card.dataset.id;
+      const found = getInterestedTitles().find(w => String(w.id) === String(id));
+      if (found) {
+        showItemDetailsModal(found);
+      }
+    });
+  });
+}
+
+document.getElementById('clearInterestedBtn')?.addEventListener('click', () => {
+  if (confirm('Clear all interested titles?')) {
+    clearInterestedHistory();
   }
 });
 
@@ -282,11 +394,98 @@ if (userNameText) userNameText.textContent = userName;
 if (menuName) menuName.textContent = userName;
 if (menuEmail) menuEmail.textContent = userEmail;
 
+// ─── CHAT WINDOW CONTROLLER ───
+const chatTriggerBtn = document.getElementById('chatTriggerBtn');
+const chatWindow = document.getElementById('chatWindow');
+const chatCloseBtn = document.getElementById('chatCloseBtn');
+const chatForm = document.getElementById('chatForm');
+const chatInput = document.getElementById('chatInput');
+const chatMessages = document.getElementById('chatMessages');
+const chatBody = document.getElementById('chatBody');
+
+function toggleChat(forceOpen) {
+  if (!chatWindow || !chatTriggerBtn) return;
+  const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : !chatWindow.classList.contains('open');
+
+  if (shouldOpen) {
+    if (userBar) {
+      userBar.classList.remove('open');
+      userBarBtn?.setAttribute('aria-expanded', false);
+    }
+    chatWindow.classList.add('open');
+    chatWindow.setAttribute('aria-hidden', 'false');
+    chatTriggerBtn.classList.add('chat-open');
+    chatTriggerBtn.setAttribute('aria-expanded', 'true');
+    setTimeout(() => {
+      chatInput?.focus();
+      if (chatBody) chatBody.scrollTop = chatBody.scrollHeight;
+    }, 50);
+  } else {
+    chatWindow.classList.remove('open');
+    chatWindow.setAttribute('aria-hidden', 'true');
+    chatTriggerBtn.classList.remove('chat-open');
+    chatTriggerBtn.setAttribute('aria-expanded', 'false');
+  }
+}
+
+if (chatTriggerBtn && chatWindow) {
+  chatTriggerBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleChat();
+  });
+
+  chatCloseBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleChat(false);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && chatWindow.classList.contains('open')) {
+      toggleChat(false);
+    }
+  });
+
+  // Sending messages (User-side only, no bot responses)
+  chatForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!chatInput) return;
+    const text = chatInput.value.trim();
+    if (!text) return;
+
+    const row = document.createElement('div');
+    row.className = 'chat-msg-row';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble-outgoing';
+    bubble.textContent = text;
+
+    const time = document.createElement('span');
+    time.className = 'chat-msg-time';
+    const now = new Date();
+    time.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    row.appendChild(bubble);
+    row.appendChild(time);
+
+    if (chatMessages) {
+      chatMessages.appendChild(row);
+    }
+
+    chatInput.value = '';
+    chatInput.focus();
+
+    if (chatBody) {
+      chatBody.scrollTop = chatBody.scrollHeight;
+    }
+  });
+}
+
 const userBar = document.getElementById('userBar');
 const userBarBtn = document.getElementById('userBarBtn');
 if (userBar && userBarBtn) {
   userBarBtn.addEventListener('click', (e) => {
     e.stopPropagation();
+    toggleChat(false);
     const isOpen = userBar.classList.toggle('open');
     userBarBtn.setAttribute('aria-expanded', isOpen);
   });
@@ -496,6 +695,7 @@ function renderSpotlightModalContent(item, typeLabel, trailerUrl, onSpinAgain) {
   if (!modalBody) return;
 
   const watched = isWatched(item.id);
+  const interested = isInterested(item.id);
 
   modalBody.innerHTML = `
     <div class="spotlight-card">
@@ -519,6 +719,9 @@ function renderSpotlightModalContent(item, typeLabel, trailerUrl, onSpinAgain) {
             <span>▶</span>
             <span>Watch Trailer on YouTube</span>
           </a>
+          <button type="button" class="btn-interested ${interested ? 'active' : ''}" id="toggleInterestedBtn">
+            <span>${interested ? '★ Interested' : '+ Interested'}</span>
+          </button>
           <button type="button" class="btn-watched ${watched ? 'active' : ''}" id="toggleWatchedBtn">
             <span>${watched ? '✓ Watched' : '+ Mark as Watched'}</span>
           </button>
@@ -532,6 +735,16 @@ function renderSpotlightModalContent(item, typeLabel, trailerUrl, onSpinAgain) {
       </div>
     </div>
   `;
+
+  // Toggle Interested Button Handler
+  document.getElementById('toggleInterestedBtn')?.addEventListener('click', () => {
+    const isNowInterested = toggleInterested(item);
+    const btn = document.getElementById('toggleInterestedBtn');
+    if (btn) {
+      btn.classList.toggle('active', isNowInterested);
+      btn.innerHTML = `<span>${isNowInterested ? '★ Interested' : '+ Interested'}</span>`;
+    }
+  });
 
   // Toggle Watched Button Handler
   document.getElementById('toggleWatchedBtn')?.addEventListener('click', () => {
@@ -595,3 +808,4 @@ document.getElementById('pickRandomSeriesBtn')?.addEventListener('click', () => 
 
 // Initial boot
 updateWatchedUI();
+updateInterestedUI();

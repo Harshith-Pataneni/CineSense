@@ -79,6 +79,42 @@ function toggleWatched(show) {
   return !exists;
 }
 
+// ─── INTERESTED STORAGE (SHARED ACROSS APP) ───
+const INTERESTED_STORAGE_KEY = 'decider_interested_titles';
+
+function getInterestedTitles() {
+  try { return JSON.parse(localStorage.getItem(INTERESTED_STORAGE_KEY) || '[]'); } catch (e) { return []; }
+}
+
+function isInterested(id) {
+  if (!id) return false;
+  return getInterestedTitles().some(item => String(item.id) === String(id));
+}
+
+function toggleInterested(show) {
+  if (!show || !show.id) return false;
+  let list = getInterestedTitles();
+  const exists = list.some(w => String(w.id) === String(show.id));
+
+  if (exists) {
+    list = list.filter(w => String(w.id) !== String(show.id));
+  } else {
+    list.unshift({
+      id: show.id,
+      title: show.name || show.title || 'Untitled',
+      type: 'tv',
+      poster: show.poster || (show.poster_path ? `${IMAGE_BASE_URL}${show.poster_path}` : FALLBACK_POSTER),
+      rating: show.vote_average ? show.vote_average.toFixed(1) : (show.rating || 'NR'),
+      year: (show.first_air_date || show.release_date || '').slice(0, 4) || (show.year || 'N/A'),
+      overview: show.overview || '',
+      interestedAt: new Date().toISOString()
+    });
+  }
+
+  localStorage.setItem(INTERESTED_STORAGE_KEY, JSON.stringify(list));
+  return !exists;
+}
+
 // ─── TOAST NOTIFICATION ───
 let toastTimer;
 function showToast(message) {
@@ -289,6 +325,7 @@ async function showResults() {
 function createSeriesCardHTML(show, platformName) {
   const s = formatSeries(show);
   const watchedBadge = isWatched(s.id) ? '<div class="card-watched-badge" title="Marked as Watched">✓ Watched</div>' : '';
+  const interestedBadge = isInterested(s.id) ? '<div class="card-interested-badge" title="Interested">★ Interested</div>' : '';
 
   return `
     <article class="series-card" data-id="${s.id}">
@@ -296,6 +333,7 @@ function createSeriesCardHTML(show, platformName) {
         <img class="series-poster" src="${s.poster}" alt="${s.name}" loading="lazy" onerror="this.src='${FALLBACK_POSTER}'" />
         <div class="card-rating-badge">⭐ ${s.rating}</div>
         ${watchedBadge}
+        ${interestedBadge}
         <div class="card-overlay">
           <button class="quick-view-btn" type="button">Quick View</button>
         </div>
@@ -438,6 +476,9 @@ async function renderRandomModalContent(data) {
             <span>▶</span>
             <span>Watch Trailer on YouTube</span>
           </a>
+          <button type="button" class="btn-interested ${isInterested(s.id) ? 'active' : ''}" data-id="${s.id}" id="modalInterestedBtn">
+            <span>${isInterested(s.id) ? '★ Interested' : '+ Interested'}</span>
+          </button>
           <button type="button" class="btn-watched ${watched ? 'active' : ''}" data-id="${s.id}" id="modalWatchedBtn">
             <span>${watched ? '✓ Watched' : '+ Mark as Watched'}</span>
           </button>
@@ -453,6 +494,7 @@ async function openDetailModal(show) {
   const s = formatSeries(show);
   const trailerUrl = await getDirectTrailerUrl(s.id, s.name, s.year);
   const watched = isWatched(s.id);
+  const interested = isInterested(s.id);
 
   if (detailModalTitle) detailModalTitle.textContent = s.name;
   if (detailModalBody) {
@@ -473,6 +515,9 @@ async function openDetailModal(show) {
               <span>▶</span>
               <span>Watch Trailer on YouTube</span>
             </a>
+            <button type="button" class="btn-interested ${interested ? 'active' : ''}" data-id="${s.id}" id="modalInterestedBtn">
+              <span>${interested ? '★ Interested' : '+ Interested'}</span>
+            </button>
             <button type="button" class="btn-watched ${watched ? 'active' : ''}" data-id="${s.id}" id="modalWatchedBtn">
               <span>${watched ? '✓ Watched' : '+ Mark as Watched'}</span>
             </button>
@@ -607,6 +652,33 @@ document.addEventListener('click', (e) => {
       b.textContent = '✓ Watched';
       cardWrapper.appendChild(b);
     } else if (!isNowWatched && badge) {
+      badge.remove();
+    }
+  }
+});
+
+// Interested Toggle Delegation
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('#modalInterestedBtn');
+  if (!btn) return;
+  const id = Number(btn.dataset.id);
+  const show = seriesLookup.get(id) || { id };
+  const isNowInterested = toggleInterested(show);
+
+  btn.classList.toggle('active', isNowInterested);
+  btn.innerHTML = `<span>${isNowInterested ? '★ Interested' : '+ Interested'}</span>`;
+  showToast(isNowInterested ? 'Added to Interested' : 'Removed from Interested');
+
+  const cardWrapper = document.querySelector(`.series-card[data-id="${id}"] .poster-wrapper`);
+  if (cardWrapper) {
+    let badge = cardWrapper.querySelector('.card-interested-badge');
+    if (isNowInterested && !badge) {
+      const b = document.createElement('div');
+      b.className = 'card-interested-badge';
+      b.title = 'Interested';
+      b.textContent = '★ Interested';
+      cardWrapper.appendChild(b);
+    } else if (!isNowInterested && badge) {
       badge.remove();
     }
   }

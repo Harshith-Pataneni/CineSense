@@ -30,6 +30,10 @@
           <span>🕒 Watched</span>
           <span class="tab-badge" id="watchedTabBadge">0</span>
         </button>
+        <button type="button" class="hub-tab" data-tab="interested">
+          <span>🔖 Interested</span>
+          <span class="tab-badge" id="interestedTabBadge">0</span>
+        </button>
         <button type="button" class="hub-tab" data-tab="recommended">
           <span>✨ For You</span>
         </button>
@@ -47,6 +51,15 @@
             <button type="button" class="btn-clear-history" id="clearWatchedBtn">Clear All</button>
           </div>
           <div class="hub-media-list" id="watchedList"></div>
+        </div>
+
+        <!-- Panel 2: Interested / Watchlist -->
+        <div class="hub-panel" id="interestedPanel">
+          <div class="panel-meta-bar">
+            <span>Interested Titles</span>
+            <button type="button" class="btn-clear-history" id="clearInterestedBtn">Clear All</button>
+          </div>
+          <div class="hub-media-list" id="interestedList"></div>
         </div>
 
         <!-- Panel 2: Recommended For You -->
@@ -175,6 +188,56 @@
         </button>
       </div>
     </section>
+  </div>
+
+  <!-- ── Floating Chat Launcher & Window ── -->
+  <button type="button" class="chat-trigger-btn" id="chatTriggerBtn" aria-label="Open chat" aria-expanded="false" title="Open Chat">
+    <div class="chat-trigger-icon-wrap">💬</div>
+    <span class="chat-trigger-text">Chat</span>
+  </button>
+
+  <div class="chat-window" id="chatWindow" aria-hidden="true">
+    <div class="chat-header">
+      <div class="chat-header-info">
+        <div class="chat-avatar-badge">
+          <span>💬</span>
+          <span class="chat-online-dot"></span>
+        </div>
+        <div class="chat-header-text">
+          <h3 class="chat-header-title">Chat</h3>
+          <span class="chat-status-text">Online</span>
+        </div>
+      </div>
+      <button type="button" class="chat-close-btn" id="chatCloseBtn" aria-label="Close chat window">&times;</button>
+    </div>
+
+    <div class="chat-body" id="chatBody">
+      <div class="chat-welcome-card" id="chatWelcomeCard">
+        <div class="chat-welcome-avatar">💬</div>
+        <h4>Decider Chat</h4>
+        <p>Type your message below and press Send or Enter.</p>
+      </div>
+      <div class="chat-messages" id="chatMessages"></div>
+    </div>
+
+    <form class="chat-footer" id="chatForm">
+      <div class="chat-input-wrapper">
+        <input
+          type="text"
+          id="chatInput"
+          class="chat-input"
+          placeholder="Type a message..."
+          autocomplete="off"
+          maxlength="1000"
+        />
+        <button type="submit" class="chat-send-btn" id="chatSendBtn" aria-label="Send message">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </div>
+    </form>
   </div>
 
   <!-- ── Floating User Bar ── -->
