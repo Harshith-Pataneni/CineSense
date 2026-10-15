@@ -1,5 +1,6 @@
-const API_KEY = '695f58d4f7262f94456eb8863dfacbde';
-const BASE_URL = 'https://api.themoviedb.org/3';
+const API_BASE_URL = (typeof window !== 'undefined' && window.location.origin && window.location.origin.includes(':5000'))
+  ? '/api'
+  : 'http://localhost:5000/api';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 const FALLBACK_POSTER = 'https://images.unsplash.com/photo-1522869635100-9f4c5e86aa37?w=500&auto=format&fit=crop&q=60';
 
@@ -47,16 +48,23 @@ const toast = document.getElementById('toastNotification');
 const WATCHED_STORAGE_KEY = 'decider_watched_titles';
 
 function getWatchedTitles() {
+  if (window.UserAdapter) return window.UserAdapter.getWatchedTitles();
   try { return JSON.parse(localStorage.getItem(WATCHED_STORAGE_KEY) || '[]'); } catch (e) { return []; }
 }
 
 function isWatched(id) {
   if (!id) return false;
+  if (window.UserAdapter) return window.UserAdapter.isWatched(id);
   return getWatchedTitles().some(item => String(item.id) === String(id));
 }
 
 function toggleWatched(show) {
   if (!show || !show.id) return false;
+  if (window.UserAdapter) {
+    const isNow = !isWatched(show.id);
+    window.UserAdapter.toggleWatched({ ...show, type: 'tv' });
+    return isNow;
+  }
   let list = getWatchedTitles();
   const exists = list.some(w => String(w.id) === String(show.id));
 
@@ -79,20 +87,27 @@ function toggleWatched(show) {
   return !exists;
 }
 
-// ─── INTERESTED STORAGE (SHARED ACROSS APP) ───
+// ─── INTERESTED STORAGE (SHARED ACROSS APP & ADAPTER) ───
 const INTERESTED_STORAGE_KEY = 'decider_interested_titles';
 
 function getInterestedTitles() {
+  if (window.UserAdapter) return window.UserAdapter.getInterestedTitles();
   try { return JSON.parse(localStorage.getItem(INTERESTED_STORAGE_KEY) || '[]'); } catch (e) { return []; }
 }
 
 function isInterested(id) {
   if (!id) return false;
+  if (window.UserAdapter) return window.UserAdapter.isInterested(id);
   return getInterestedTitles().some(item => String(item.id) === String(id));
 }
 
 function toggleInterested(show) {
   if (!show || !show.id) return false;
+  if (window.UserAdapter) {
+    const isNow = !isInterested(show.id);
+    window.UserAdapter.toggleInterested({ ...show, type: 'tv' });
+    return isNow;
+  }
   let list = getInterestedTitles();
   const exists = list.some(w => String(w.id) === String(show.id));
 
@@ -113,6 +128,14 @@ function toggleInterested(show) {
 
   localStorage.setItem(INTERESTED_STORAGE_KEY, JSON.stringify(list));
   return !exists;
+}
+
+if (window.UserAdapter) {
+  window.UserAdapter.onLibraryChange(() => {
+    if (typeof renderFilteredResults === 'function') {
+      renderFilteredResults();
+    }
+  });
 }
 
 // ─── TOAST NOTIFICATION ───
@@ -143,9 +166,13 @@ async function getDirectTrailerUrl(id, fallbackTitle = '', fallbackYear = '') {
   if (trailerCache.has(id)) return trailerCache.get(id);
 
   try {
-    const res = await fetch(`${BASE_URL}/tv/${id}/videos?api_key=${API_KEY}&language=en-US`);
+    const res = await fetch(`${API_BASE_URL}/trailer?type=tv&id=${id}`);
     if (res.ok) {
       const data = await res.json();
+      if (data.trailerUrl) {
+        trailerCache.set(id, data.trailerUrl);
+        return data.trailerUrl;
+      }
       const yt = (data.results || []).filter(v => v.site === 'YouTube' && v.key);
       const match = yt.find(v => v.type === 'Trailer' && v.official)
                  || yt.find(v => v.type === 'Trailer')
@@ -169,7 +196,7 @@ async function getDirectTrailerUrl(id, fallbackTitle = '', fallbackYear = '') {
 // ─── GENRES & PLATFORMS ───
 async function fetchGenres() {
   try {
-    const res = await fetch(`${BASE_URL}/genre/tv/list?api_key=${API_KEY}&language=en`);
+    const res = await fetch(`${API_BASE_URL}/genres?type=tv`);
     const data = await res.json();
     genres = data.genres || [];
     genres.forEach(g => { genreMap[g.id] = g.name; });
@@ -218,7 +245,7 @@ async function fetchSeriesForPlatform(platformId, pageLimit = 3) {
   const fetchPromises = [];
   for (const prov of providers) {
     for (let page = 1; page <= pageLimit; page++) {
-      const url = `${BASE_URL}/discover/tv?api_key=${API_KEY}${genreParam}&with_watch_providers=${prov}&watch_region=IN&sort_by=popularity.desc&vote_count.gte=10&page=${page}`;
+      const url = `${API_BASE_URL}/discover?type=tv${genreParam}&with_watch_providers=${prov}&watch_region=IN&sort_by=popularity.desc&vote_count.gte=10&page=${page}`;
       fetchPromises.push(
         fetch(url)
           .then(res => res.ok ? res.json() : null)

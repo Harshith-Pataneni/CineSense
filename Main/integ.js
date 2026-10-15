@@ -1,6 +1,7 @@
 // ─── API CONFIGURATION & CONSTANTS ───
-const API_KEY = '695f58d4f7262f94456eb8863dfacbde';
-const BASE_URL = 'https://api.themoviedb.org/3';
+const API_BASE_URL = (typeof window !== 'undefined' && window.location.origin && window.location.origin.includes(':5000'))
+  ? '/api'
+  : 'http://localhost:5000/api';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 const FALLBACK_POSTER = 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&auto=format&fit=crop&q=60';
 
@@ -12,10 +13,20 @@ const platforms = [
   { id: 232, name: 'Zee5', color: '#9333ea' }
 ];
 
-// ─── WATCHED TITLES STORAGE (SHARED ACROSS APP) ───
+function getPosterUrl(item) {
+  if (!item) return FALLBACK_POSTER;
+  const p = item.poster || item.poster_path;
+  if (!p || p === 'null' || p === 'undefined') return FALLBACK_POSTER;
+  if (p.startsWith('http://') || p.startsWith('https://')) return p;
+  const path = p.startsWith('/') ? p : `/${p}`;
+  return `${IMAGE_BASE_URL}${path}`;
+}
+
+// ─── WATCHED TITLES STORAGE (SHARED ACROSS APP & ADAPTER) ───
 const WATCHED_STORAGE_KEY = 'decider_watched_titles';
 
 function getWatchedTitles() {
+  if (window.UserAdapter) return window.UserAdapter.getWatchedTitles();
   try {
     return JSON.parse(localStorage.getItem(WATCHED_STORAGE_KEY) || '[]');
   } catch (e) {
@@ -25,11 +36,18 @@ function getWatchedTitles() {
 
 function isWatched(id) {
   if (!id) return false;
+  if (window.UserAdapter) return window.UserAdapter.isWatched(id);
   return getWatchedTitles().some(item => String(item.id) === String(id));
 }
 
 function toggleWatched(item) {
   if (!item || !item.id) return false;
+  if (window.UserAdapter) {
+    const isNow = !isWatched(item.id);
+    window.UserAdapter.toggleWatched(item).then(() => updateWatchedUI());
+    updateWatchedUI();
+    return isNow;
+  }
   let list = getWatchedTitles();
   const exists = list.some(w => String(w.id) === String(item.id));
 
@@ -50,18 +68,23 @@ function toggleWatched(item) {
 
   localStorage.setItem(WATCHED_STORAGE_KEY, JSON.stringify(list));
   updateWatchedUI();
-  return !exists; // returns true if now marked as watched
+  return !exists;
 }
 
 function clearWatchedHistory() {
-  localStorage.setItem(WATCHED_STORAGE_KEY, JSON.stringify([]));
+  if (window.UserAdapter) {
+    window.UserAdapter.clearWatchedHistory().then(() => updateWatchedUI());
+  } else {
+    localStorage.setItem(WATCHED_STORAGE_KEY, JSON.stringify([]));
+  }
   updateWatchedUI();
 }
 
-// ─── INTERESTED TITLES STORAGE (SHARED ACROSS APP) ───
+// ─── INTERESTED TITLES STORAGE (SHARED ACROSS APP & ADAPTER) ───
 const INTERESTED_STORAGE_KEY = 'decider_interested_titles';
 
 function getInterestedTitles() {
+  if (window.UserAdapter) return window.UserAdapter.getInterestedTitles();
   try {
     return JSON.parse(localStorage.getItem(INTERESTED_STORAGE_KEY) || '[]');
   } catch (e) {
@@ -71,11 +94,18 @@ function getInterestedTitles() {
 
 function isInterested(id) {
   if (!id) return false;
+  if (window.UserAdapter) return window.UserAdapter.isInterested(id);
   return getInterestedTitles().some(item => String(item.id) === String(id));
 }
 
 function toggleInterested(item) {
   if (!item || !item.id) return false;
+  if (window.UserAdapter) {
+    const isNow = !isInterested(item.id);
+    window.UserAdapter.toggleInterested(item).then(() => updateInterestedUI());
+    updateInterestedUI();
+    return isNow;
+  }
   let list = getInterestedTitles();
   const exists = list.some(w => String(w.id) === String(item.id));
 
@@ -100,8 +130,19 @@ function toggleInterested(item) {
 }
 
 function clearInterestedHistory() {
-  localStorage.setItem(INTERESTED_STORAGE_KEY, JSON.stringify([]));
+  if (window.UserAdapter) {
+    window.UserAdapter.clearInterestedHistory().then(() => updateInterestedUI());
+  } else {
+    localStorage.setItem(INTERESTED_STORAGE_KEY, JSON.stringify([]));
+  }
   updateInterestedUI();
+}
+
+if (window.UserAdapter) {
+  window.UserAdapter.onLibraryChange(() => {
+    updateWatchedUI();
+    updateInterestedUI();
+  });
 }
 
 // ─── SIDEBAR & MY HUB MANAGEMENT ───
@@ -174,7 +215,7 @@ function updateWatchedUI() {
 
   watchedList.innerHTML = list.map(item => `
     <div class="sidebar-media-item" data-id="${item.id}" data-type="${item.type}">
-      <img src="${item.poster || FALLBACK_POSTER}" class="sidebar-media-thumb" alt="${item.title}" onerror="this.src='${FALLBACK_POSTER}'" />
+      <img src="${getPosterUrl(item)}" class="sidebar-media-thumb" alt="${item.title}" onerror="this.src='${FALLBACK_POSTER}'" />
       <div class="sidebar-media-info">
         <div class="sidebar-media-title" title="${item.title}">${item.title}</div>
         <div class="sidebar-media-meta">
@@ -192,8 +233,12 @@ function updateWatchedUI() {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const id = btn.dataset.id;
-      const currentList = getWatchedTitles().filter(w => String(w.id) !== String(id));
-      localStorage.setItem(WATCHED_STORAGE_KEY, JSON.stringify(currentList));
+      if (window.UserAdapter) {
+        window.UserAdapter.removeWatched(id);
+      } else {
+        const currentList = getWatchedTitles().filter(w => String(w.id) !== String(id));
+        localStorage.setItem(WATCHED_STORAGE_KEY, JSON.stringify(currentList));
+      }
       updateWatchedUI();
     });
   });
@@ -240,7 +285,7 @@ function updateInterestedUI() {
 
   interestedList.innerHTML = list.map(item => `
     <div class="sidebar-media-item" data-id="${item.id}" data-type="${item.type}">
-      <img src="${item.poster || FALLBACK_POSTER}" class="sidebar-media-thumb" alt="${item.title}" onerror="this.src='${FALLBACK_POSTER}'" />
+      <img src="${getPosterUrl(item)}" class="sidebar-media-thumb" alt="${item.title}" onerror="this.src='${FALLBACK_POSTER}'" />
       <div class="sidebar-media-info">
         <div class="sidebar-media-title" title="${item.title}">${item.title}</div>
         <div class="sidebar-media-meta">
@@ -258,8 +303,12 @@ function updateInterestedUI() {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const id = btn.dataset.id;
-      const currentList = getInterestedTitles().filter(w => String(w.id) !== String(id));
-      localStorage.setItem(INTERESTED_STORAGE_KEY, JSON.stringify(currentList));
+      if (window.UserAdapter) {
+        window.UserAdapter.removeInterested(id);
+      } else {
+        const currentList = getInterestedTitles().filter(w => String(w.id) !== String(id));
+        localStorage.setItem(INTERESTED_STORAGE_KEY, JSON.stringify(currentList));
+      }
       updateInterestedUI();
     });
   });
@@ -294,7 +343,7 @@ async function loadRecommendedTab() {
   container.innerHTML = `<div style="text-align: center; padding: 30px;"><div class="dice-spinner" style="font-size: 2rem;">🎲</div><p style="font-size: 0.85rem; color: var(--text-muted);">Finding top recommendations...</p></div>`;
 
   try {
-    const res = await fetch(`${BASE_URL}/trending/all/week?api_key=${API_KEY}`);
+    const res = await fetch(`${API_BASE_URL}/trending?mediaType=all&timeWindow=week`);
     const data = await res.json();
     const items = (data.results || []).filter(item => item && item.poster_path).slice(0, 10);
     renderSidebarItems(container, items);
@@ -312,7 +361,7 @@ async function loadPopularTab() {
   container.innerHTML = `<div style="text-align: center; padding: 30px;"><div class="dice-spinner" style="font-size: 2rem;">🔥</div><p style="font-size: 0.85rem; color: var(--text-muted);">Loading trending titles...</p></div>`;
 
   try {
-    const res = await fetch(`${BASE_URL}/discover/movie?api_key=${API_KEY}&sort_by=popularity.desc&vote_count.gte=100&page=1`);
+    const res = await fetch(`${API_BASE_URL}/discover?type=movie&sort_by=popularity.desc&vote_count.gte=100&page=1`);
     const data = await res.json();
     const items = (data.results || []).filter(item => item && item.poster_path).slice(0, 10);
     renderSidebarItems(container, items, 'movie');
@@ -327,8 +376,8 @@ function renderSidebarItems(container, items, defaultType = null) {
     const title = item.title || item.name || 'Untitled';
     const type = item.media_type || defaultType || (item.title ? 'movie' : 'tv');
     const year = (item.release_date || item.first_air_date || '').slice(0, 4) || 'N/A';
-    const rating = item.vote_average ? item.vote_average.toFixed(1) : 'NR';
-    const poster = item.poster_path ? `${IMAGE_BASE_URL}${item.poster_path}` : FALLBACK_POSTER;
+    const rating = item.vote_average ? item.vote_average.toFixed(1) : (item.rating || 'NR');
+    const poster = getPosterUrl(item);
 
     return `
       <div class="sidebar-media-item" data-id="${item.id}" data-type="${type}">
@@ -374,6 +423,11 @@ if (tokenParam) {
     if (payload.email) localStorage.setItem('userEmail', payload.email);
     if (payload.name) localStorage.setItem('userName', payload.name);
   } catch (e) {}
+  if (window.UserAdapter) {
+    window.UserAdapter.migrateGuestData(tokenParam).then(() => {
+      if (window.UserAdapter) window.UserAdapter.syncLibrary();
+    });
+  }
   window.history.replaceState({}, document.title, window.location.pathname);
 }
 if (!localStorage.getItem('token')) {
@@ -550,7 +604,7 @@ async function fetchRandomItem(type = 'movie', platformId = null) {
 
   // Random page 1 or 2
   const page = Math.floor(Math.random() * 2) + 1;
-  let url = `${BASE_URL}/discover/${type}?api_key=${API_KEY}${provParam}&sort_by=popularity.desc&vote_count.gte=5&page=${page}`;
+  let url = `${API_BASE_URL}/discover?type=${type}${provParam}&sort_by=popularity.desc&vote_count.gte=5&page=${page}`;
 
   try {
     let res = await fetch(url);
@@ -559,7 +613,7 @@ async function fetchRandomItem(type = 'movie', platformId = null) {
 
     // Reliable fallback: if random page yielded no items, always fallback to page 1
     if (!items.length) {
-      url = `${BASE_URL}/discover/${type}?api_key=${API_KEY}${provParam}&sort_by=popularity.desc&page=1`;
+      url = `${API_BASE_URL}/discover?type=${type}${provParam}&sort_by=popularity.desc&page=1`;
       res = await fetch(url);
       data = await res.json();
       items = (data.results || []).filter(item => item && item.poster_path);
@@ -575,9 +629,10 @@ async function fetchRandomItem(type = 'movie', platformId = null) {
 
 async function getTrailerUrl(id, type, title, year) {
   try {
-    const res = await fetch(`${BASE_URL}/${type}/${id}/videos?api_key=${API_KEY}&language=en-US`);
+    const res = await fetch(`${API_BASE_URL}/trailer?type=${type}&id=${id}`);
     if (res.ok) {
       const data = await res.json();
+      if (data.trailerUrl) return data.trailerUrl;
       const yt = (data.results || []).filter(v => v.site === 'YouTube' && v.key);
       const match = yt.find(v => v.type === 'Trailer' && v.official)
                  || yt.find(v => v.type === 'Trailer')
@@ -732,9 +787,38 @@ function renderSpotlightModalContent(item, typeLabel, trailerUrl, onSpinAgain) {
             </button>
           ` : ''}
         </div>
+        <div class="spotlight-user-rating" style="display: flex; align-items: center; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08);">
+          <span style="font-size: 0.85rem; color: var(--text-muted, #94a3b8);">Your Rating:</span>
+          <select id="userRatingSelect" style="background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.18); border-radius: 6px; padding: 4px 8px; font-size: 0.85rem; cursor: pointer;">
+            <option value="">Rate (1-10)</option>
+            ${[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(n => `<option value="${n}" ${(window.UserAdapter && window.UserAdapter.getRating(item.id) === n) ? 'selected' : ''}>⭐ ${n}/10</option>`).join('')}
+          </select>
+          ${(window.UserAdapter && window.UserAdapter.getRating(item.id)) ? `<button type="button" id="clearRatingBtn" style="background: none; border: none; color: #ef4444; font-size: 0.8rem; cursor: pointer; text-decoration: underline;">Clear</button>` : ''}
+        </div>
       </div>
     </div>
   `;
+
+  document.getElementById('userRatingSelect')?.addEventListener('change', (e) => {
+    const val = e.target.value;
+    if (window.UserAdapter) {
+      if (val) {
+        window.UserAdapter.setRating(item, Number(val));
+      } else {
+        window.UserAdapter.removeRating(item.id, item.type);
+      }
+    }
+  });
+
+  document.getElementById('clearRatingBtn')?.addEventListener('click', () => {
+    if (window.UserAdapter) {
+      window.UserAdapter.removeRating(item.id, item.type);
+      const sel = document.getElementById('userRatingSelect');
+      if (sel) sel.value = '';
+      const clr = document.getElementById('clearRatingBtn');
+      if (clr) clr.remove();
+    }
+  });
 
   // Toggle Interested Button Handler
   document.getElementById('toggleInterestedBtn')?.addEventListener('click', () => {

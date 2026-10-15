@@ -197,6 +197,32 @@
           localStorage.setItem('token', data.token);
           localStorage.setItem('userEmail', data.email);
           localStorage.setItem('userName', data.name || data.email.split('@')[0]);
+
+          // Safely migrate guest items if any exist
+          try {
+            const guestW = JSON.parse(localStorage.getItem('decider_watched_titles') || '[]');
+            const guestI = JSON.parse(localStorage.getItem('decider_interested_titles') || '[]');
+            const guestR = JSON.parse(localStorage.getItem('decider_user_ratings') || '[]');
+            if (guestW.length > 0 || guestI.length > 0 || guestR.length > 0) {
+              const migRes = await fetch('http://localhost:5000/api/user/migrate', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${data.token}`,
+                },
+                body: JSON.stringify({ watched: guestW, interested: guestI, ratings: guestR }),
+              });
+              if (migRes.ok) {
+                // Never wipe guest storage until backend confirms 200 OK
+                localStorage.removeItem('decider_watched_titles');
+                localStorage.removeItem('decider_interested_titles');
+                localStorage.removeItem('decider_user_ratings');
+              }
+            }
+          } catch (migErr) {
+            console.warn('Guest migration deferred:', migErr);
+          }
+
           window.location.href = '../Main/index.html';
         } else {
           errorDiv.textContent = data.message || 'Login failed. Please check your credentials.';
@@ -243,7 +269,7 @@
         });
         const data = await response.json();
         if (response.ok) {
-          successDiv.textContent = 'Account created successfully! Redirecting to sign in...';
+          successDiv.textContent = data.message || 'Account created successfully! Redirecting to sign in...';
           setTimeout(() => {
             signupPanel.style.display = 'none';
             loginPanel.style.display = 'block';
