@@ -6,6 +6,8 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const passport = require('./config/passport');
 const authRoutes = require('./routes/auth.routes');
+const tmdbRoutes = require('./routes/tmdb.routes');
+const userDataRoutes = require('./routes/userData.routes');
 
 const app = express();
 
@@ -14,7 +16,7 @@ app.use(express.json());
 const session = require('express-session');
 
 app.use(session({
-  secret: process.env.JWT_SECRET,
+  secret: process.env.JWT_SECRET || 'decider_session_secret',
   resave: false,
   saveUninitialized: false,
 }));
@@ -29,6 +31,8 @@ mongoose.connect(process.env.MONGO_URI, {
 .catch(err => console.log(err));
 
 app.use('/auth', authRoutes);
+app.use('/api', tmdbRoutes);
+app.use('/api/user', userDataRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
