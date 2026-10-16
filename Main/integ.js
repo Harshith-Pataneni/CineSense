@@ -751,6 +751,19 @@ function renderSpotlightModalContent(item, typeLabel, trailerUrl, onSpinAgain) {
 
   const watched = isWatched(item.id);
   const interested = isInterested(item.id);
+  const currentRating = window.UserAdapter ? window.UserAdapter.getRating(item.id) : null;
+  const ratingDescs = {
+    1: '1/10 • Appalling 🤢',
+    2: '2/10 • Terrible 👎',
+    3: '3/10 • Poor 🥱',
+    4: '4/10 • Below Average 😐',
+    5: '5/10 • Average / Meh 🤔',
+    6: '6/10 • Decent Watch 👍',
+    7: '7/10 • Good Film 👌',
+    8: '8/10 • Great! 🔥',
+    9: '9/10 • Incredible! 🌟',
+    10: '10/10 • Masterpiece 🏆'
+  };
 
   modalBody.innerHTML = `
     <div class="spotlight-card">
@@ -787,36 +800,135 @@ function renderSpotlightModalContent(item, typeLabel, trailerUrl, onSpinAgain) {
             </button>
           ` : ''}
         </div>
-        <div class="spotlight-user-rating" style="display: flex; align-items: center; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08);">
-          <span style="font-size: 0.85rem; color: var(--text-muted, #94a3b8);">Your Rating:</span>
-          <select id="userRatingSelect" style="background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.18); border-radius: 6px; padding: 4px 8px; font-size: 0.85rem; cursor: pointer;">
-            <option value="">Rate (1-10)</option>
-            ${[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(n => `<option value="${n}" ${(window.UserAdapter && window.UserAdapter.getRating(item.id) === n) ? 'selected' : ''}>⭐ ${n}/10</option>`).join('')}
-          </select>
-          ${(window.UserAdapter && window.UserAdapter.getRating(item.id)) ? `<button type="button" id="clearRatingBtn" style="background: none; border: none; color: #ef4444; font-size: 0.8rem; cursor: pointer; text-decoration: underline;">Clear</button>` : ''}
+        <div class="spotlight-rating-card" id="spotlightRatingCard">
+          <div class="rating-header-row">
+            <div class="rating-label-group">
+              <span class="rating-icon-sparkle">✨</span>
+              <span class="rating-title-text">Your Rating</span>
+            </div>
+            <div class="rating-score-pill ${currentRating ? '' : 'empty'}" id="ratingScorePill">
+              ${currentRating ? `⭐ ${currentRating} / 10` : 'Not Rated'}
+            </div>
+          </div>
+
+          <div class="rating-stars-track" id="ratingStarsTrack">
+            ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(starNum => `
+              <button type="button" class="star-rating-btn ${currentRating && starNum <= currentRating ? 'active' : ''}" data-val="${starNum}" aria-label="Rate ${starNum} out of 10">
+                ★
+              </button>
+            `).join('')}
+          </div>
+
+          <div class="rating-footer-row">
+            <span class="rating-desc-text" id="ratingDescText">
+              ${currentRating ? (ratingDescs[currentRating] || 'Rated') : 'Hover or tap a star to rate'}
+            </span>
+            <button type="button" class="btn-clear-rating" id="clearRatingBtn" style="${currentRating ? '' : 'display:none;'}">
+              Clear Rating
+            </button>
+          </div>
         </div>
       </div>
     </div>
   `;
 
-  document.getElementById('userRatingSelect')?.addEventListener('change', (e) => {
-    const val = e.target.value;
-    if (window.UserAdapter) {
-      if (val) {
-        window.UserAdapter.setRating(item, Number(val));
-      } else {
-        window.UserAdapter.removeRating(item.id, item.type);
-      }
-    }
-  });
+  // ─── INTERACTIVE STAR RATING CONTROLLER ───
+  const starsTrack = document.getElementById('ratingStarsTrack');
+  const scorePill = document.getElementById('ratingScorePill');
+  const descText = document.getElementById('ratingDescText');
+  const clearBtn = document.getElementById('clearRatingBtn');
+  let selectedRating = currentRating;
 
-  document.getElementById('clearRatingBtn')?.addEventListener('click', () => {
+  if (starsTrack) {
+    const starBtns = starsTrack.querySelectorAll('.star-rating-btn');
+
+    starBtns.forEach(btn => {
+      // Hover preview
+      btn.addEventListener('mouseenter', () => {
+        const val = Number(btn.dataset.val);
+        starBtns.forEach(s => {
+          s.classList.toggle('hovered', Number(s.dataset.val) <= val);
+        });
+        if (scorePill) {
+          scorePill.className = 'rating-score-pill';
+          scorePill.textContent = `⭐ ${val} / 10`;
+        }
+        if (descText) {
+          descText.textContent = ratingDescs[val] || '';
+          descText.style.color = '#fbbf24';
+        }
+      });
+
+      // Click to rate
+      btn.addEventListener('click', () => {
+        const val = Number(btn.dataset.val);
+        selectedRating = val;
+
+        btn.classList.add('just-rated');
+        setTimeout(() => btn.classList.remove('just-rated'), 350);
+
+        starBtns.forEach(s => {
+          s.classList.toggle('active', Number(s.dataset.val) <= val);
+          s.classList.remove('hovered');
+        });
+
+        if (scorePill) {
+          scorePill.className = 'rating-score-pill';
+          scorePill.textContent = `⭐ ${val} / 10`;
+        }
+        if (descText) {
+          descText.textContent = ratingDescs[val] || 'Rated';
+          descText.style.color = '#e2e8f0';
+        }
+        if (clearBtn) clearBtn.style.display = 'inline-block';
+
+        if (window.UserAdapter) {
+          window.UserAdapter.setRating(item, val);
+        }
+      });
+    });
+
+    // Restore on mouse leave
+    starsTrack.addEventListener('mouseleave', () => {
+      starBtns.forEach(s => {
+        s.classList.remove('hovered');
+        s.classList.toggle('active', selectedRating && Number(s.dataset.val) <= selectedRating);
+      });
+      if (scorePill) {
+        if (selectedRating) {
+          scorePill.className = 'rating-score-pill';
+          scorePill.textContent = `⭐ ${selectedRating} / 10`;
+        } else {
+          scorePill.className = 'rating-score-pill empty';
+          scorePill.textContent = 'Not Rated';
+        }
+      }
+      if (descText) {
+        descText.textContent = selectedRating ? (ratingDescs[selectedRating] || 'Rated') : 'Hover or tap a star to rate';
+        descText.style.color = '#94a3b8';
+      }
+    });
+  }
+
+  // Clear rating button
+  clearBtn?.addEventListener('click', () => {
+    selectedRating = null;
+    const starBtns = starsTrack?.querySelectorAll('.star-rating-btn') || [];
+    starBtns.forEach(s => {
+      s.classList.remove('active', 'hovered');
+    });
+    if (scorePill) {
+      scorePill.className = 'rating-score-pill empty';
+      scorePill.textContent = 'Not Rated';
+    }
+    if (descText) {
+      descText.textContent = 'Rating removed';
+      descText.style.color = '#94a3b8';
+    }
+    if (clearBtn) clearBtn.style.display = 'none';
+
     if (window.UserAdapter) {
       window.UserAdapter.removeRating(item.id, item.type);
-      const sel = document.getElementById('userRatingSelect');
-      if (sel) sel.value = '';
-      const clr = document.getElementById('clearRatingBtn');
-      if (clr) clr.remove();
     }
   });
 
